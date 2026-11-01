@@ -7,12 +7,17 @@ def retrieve_decision_provenance(
     asset_urn: str, gms_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Independent retrieval function: Queries DataHub live metadata graph for the specified asset URN,
-    reads stored Decision Provenance custom properties, and returns a structured decision report.
-    Does NOT use any in-memory application state.
+    Независимо запрашивает живой граф метаданных DataHub для заданного URN актива,
+    читает сохранённые пользовательские свойства Decision Provenance и возвращает структурированный отчёт.
+    Не использует состояние приложения в памяти.
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     query = """
     query getDatasetProvenance($urn: String!) {
@@ -38,7 +43,7 @@ def retrieve_decision_provenance(
     res = graph.execute_graphql(query, variables={"urn": asset_urn})
     dataset_data = res.get("dataset") if res else None
     if not dataset_data or not dataset_data.get("properties"):
-        return {"error": f"No asset found in DataHub for URN: {asset_urn}"}
+        return {"error": f"В DataHub не найден актив с URN: {asset_urn}"}
 
     custom_props_list = dataset_data["properties"].get("customProperties") or []
     props_map = {item["key"]: item["value"] for item in custom_props_list}
@@ -47,7 +52,7 @@ def retrieve_decision_provenance(
         return {
             "asset_urn": asset_urn,
             "has_provenance": False,
-            "message": "No Evidence Gate Decision Provenance found on this asset.",
+            "message": "Для этого актива не найдено обоснование решения Evidence Gate.",
         }
 
     links = dataset_data.get("institutionalMemory", {}).get("elements", [])

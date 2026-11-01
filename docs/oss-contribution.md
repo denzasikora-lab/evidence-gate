@@ -1,14 +1,10 @@
-# Open-Source Contribution
+# Вклад в открытый исходный код
 
-**Status: PR open**, pending review.
+**Статус: PR открыт**, ожидается проверка.
 
-Pulled the write-back/precedent/staleness pattern out of Evidence Gate
-into a standalone, generalized skill and submitted it upstream to
-`datahub-project/datahub-skills`.
+Логика записи обратно, прецедентов и устаревания из Evidence Gate вынесена в независимый обобщённый навык и отправлена в `datahub-project/datahub-skills`.
 
 PR: https://github.com/datahub-project/datahub-skills/pull/71
-Skill: `skills/datahub-decision-provenance/SKILL.md`
+Навык: `skills/datahub-decision-provenance/SKILL.md`
 
-The skill is deliberately generalized beyond this project's specific
-revenue-rename scenario — the risk rules and write-back mechanism apply
-to any metadata change worth pausing on before it ships.
+Навык специально обобщён за пределы сценария переименования поля дохода: правила риска и механизм записи обратно подходят для любого изменения метаданных, которое стоит проверить перед выпуском.

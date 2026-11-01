@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CLI script to submit a ChangeRequest to Evidence Gate.
-Can post to running API server or execute the evaluation pipeline directly.
+Скрипт отправляет запрос ChangeRequest в Evidence Gate.
+Может вызвать запущенный API либо выполнить проверку локально.
 """
 import sys
 import json
@@ -23,26 +23,31 @@ from src.writeback.writer import write_decision_provenance
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Submit a ChangeRequest payload to Evidence Gate.")
+    parser = argparse.ArgumentParser(description="Отправить запрос на проверку в Evidence Gate.")
     parser.add_argument(
         "--fixture",
         default="fixtures/net_revenue_rename.json",
-        help="Path to ChangeRequest JSON payload fixture",
+        help="Путь к JSON-файлу с описанием изменения",
     )
     parser.add_argument(
         "--api-url",
         default="http://localhost:8000/evaluate",
-        help="API URL endpoint (falls back to local pipeline if server unreachable)",
+        help="Адрес API; можно указать http://127.0.0.1:8000 или полный путь /evaluate",
     )
     parser.add_argument("--json", action="store_true", help="Output raw JSON DecisionReceipt")
     args = parser.parse_args()
 
     req = parse_change_request(args.fixture)
+    api_url = args.api_url.rstrip("/")
+    if api_url.endswith(":8000") or api_url.endswith("localhost"):
+        api_url += "/evaluate"
+
+    print(f"Отправляю изменение «{req.old_field} → {req.new_field}» в Evidence Gate…", flush=True)
 
     # Try sending to running API first
     payload = json.dumps(req.model_dump()).encode("utf-8")
     request = urllib.request.Request(
-        args.api_url,
+        api_url,
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -50,10 +55,12 @@ def main():
 
     receipt_dict = None
     try:
-        with urllib.request.urlopen(request, timeout=5) as response:
+        # Проверка может включать запросы к DataHub и Gemini, поэтому 5 секунд недостаточно.
+        with urllib.request.urlopen(request, timeout=60) as response:
             if response.status == 200:
                 receipt_dict = json.loads(response.read().decode("utf-8"))
-    except Exception:
+    except Exception as exc:
+        print(f"API не ответил ({exc}); выполняю проверку локально…", flush=True)
         # Fallback to direct pipeline execution
         evidence = build_evidence_bundle(req)
         risk = evaluate_risk(req, evidence)

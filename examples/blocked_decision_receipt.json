@@ -2,7 +2,7 @@
   "decision_id": "eg-2026-001",
   "status": "blocked",
   "change_url": "https://github.com/example/repo/pull/42",
-  "business_rationale": "Change BLOCKED: Field rename 'order_total' -> 'recognized_revenue' causes a metric discrepancy. Validation failed: Revenue aggregate shifted by 13.16% (exceeds allowed tolerance of 1.00%). Old SUM(order_total) = $18,789.67, Proposed Recognized Revenue = $16,317.15.",
+  "business_rationale": "Изменение ЗАБЛОКИРОВАНО: переименование поля 'order_total' -> 'recognized_revenue' вызывает расхождение метрики. Проверка не пройдена: агрегат дохода изменился на 13,16% (превышает допустимое отклонение 1,00%). Прежний SUM(order_total) = $18,789.67, предложенный признанный доход = $16,317.15.",
   "affected_assets": [
     "urn:li:dataset:(urn:li:dataPlatform:snowflake,b2fd91.order_entry_db.analytics.order_details,PROD)"
   ],
@@ -18,7 +18,7 @@
   ],
   "validation": {
     "result": "failed",
-    "reason": "Validation failed: Revenue aggregate shifted by 13.16% (exceeds allowed tolerance of 1.00%). Old SUM(order_total) = $18,789.67, Proposed Recognized Revenue = $16,317.15."
+    "reason": "Проверка не пройдена: агрегат дохода изменился на 13,16% (превышает допустимое отклонение 1,00%). Прежний SUM(order_total) = $18,789.67, предложенный признанный доход = $16,317.15."
   },
   "required_approvers": [
     "Andrea Garcia",
@@ -28,7 +28,7 @@
     "Julia Novak",
     "Karen Okonkwo"
   ],
-  "recommended_action": "Apply the generated dbt compatibility patch (examples/recognized_revenue_patch.sql) and execute migration test suite (examples/test_recognized_revenue_migration.py) before re-submitting for approval.",
+  "recommended_action": "Примените сгенерированный патч совместимости dbt (examples/recognized_revenue_patch.sql) и выполните набор миграционных тестов (examples/test_recognized_revenue_migration.py) перед повторной отправкой на утверждение.",
   "revalidate_after": "2026-08-28T02:29:53.476706+00:00",
   "invalidation_inputs": [
     "dataset_schema:urn:li:dataset:(urn:li:dataPlatform:snowflake,b2fd91.order_entry_db.analytics.order_details,PROD)",

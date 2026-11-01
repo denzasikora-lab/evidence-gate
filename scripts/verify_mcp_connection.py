@@ -15,7 +15,12 @@ DATAHUB_GMS_URL = os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
 
 def verify_mcp_connection():
     print(f"Connecting to DataHub GMS at {DATAHUB_GMS_URL}...")
-    graph = DataHubGraph(DataHubGraphConfig(server=DATAHUB_GMS_URL))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=DATAHUB_GMS_URL,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     dataset_urn = "urn:li:dataset:(urn:li:dataPlatform:snowflake,b2fd91.order_entry_db.analytics.order_details,PROD)"
 

@@ -4,7 +4,7 @@ import duckdb
 from src.validation.schemas import RevenueValidationReport
 
 
-# Allow-listed comparison query per Evidence Gate constraint #3
+# Разрешённый список запросов сравнения согласно ограничению Evidence Gate № 3.
 ALLOWLISTED_REVENUE_COMPATIBILITY_QUERY = """
 SELECT 
     ROUND(SUM(order_total), 2) AS old_aggregate,
@@ -22,16 +22,16 @@ def validate_revenue_compatibility(
     tolerance_pct: float = 1.0,
 ) -> RevenueValidationReport:
     """
-    Executes the allow-listed DuckDB compatibility query against the order book fixture dataset.
-    Computes old aggregate SUM(order_total) vs proposed recognized_revenue aggregate,
-    and returns a RevenueValidationReport indicating pass or fail based on tolerance.
+    Выполняет разрешённый запрос совместимости DuckDB для фикстуры книги заказов.
+    Вычисляет прежний агрегат SUM(order_total) и предложенный агрегат recognized_revenue,
+    затем возвращает RevenueValidationReport с результатом по заданному допуску.
     """
     path = Path(csv_path)
     try:
         if not path.exists():
             return RevenueValidationReport(
                 result="unavailable",
-                reason=f"Validation source unavailable: Fixture CSV not found at {path}",
+                reason=f"Источник проверки недоступен: CSV-фикстура не найдена по пути {path}",
                 old_aggregate=0.0,
                 proposed_aggregate=0.0,
                 delta_pct=0.0,
@@ -39,14 +39,14 @@ def validate_revenue_compatibility(
             )
 
         conn = duckdb.connect(database=":memory:")
-        # Load synthetic order book CSV into DuckDB memory table
+        # Загружаем CSV синтетической книги заказов в таблицу DuckDB в памяти.
         conn.execute(f"CREATE TABLE orders AS SELECT * FROM read_csv_auto('{path}')")
 
         row = conn.execute(ALLOWLISTED_REVENUE_COMPATIBILITY_QUERY).fetchone()
         if not row or row[0] is None:
             return RevenueValidationReport(
                 result="unavailable",
-                reason="Validation source unavailable: Failed to compute revenue aggregates from DuckDB query",
+                reason="Источник проверки недоступен: не удалось вычислить агрегаты дохода запросом DuckDB",
                 old_aggregate=0.0,
                 proposed_aggregate=0.0,
                 delta_pct=0.0,
@@ -55,7 +55,7 @@ def validate_revenue_compatibility(
     except Exception as e:
         return RevenueValidationReport(
             result="unavailable",
-            reason=f"Validation source unavailable: {e}",
+            reason=f"Источник проверки недоступен: {e}",
             old_aggregate=0.0,
             proposed_aggregate=0.0,
             delta_pct=0.0,
@@ -76,15 +76,15 @@ def validate_revenue_compatibility(
     if passed:
         result = "passed"
         reason = (
-            f"Validation passed: Revenue aggregate shifted by {delta_pct:.2f}% "
-            f"(within allowed tolerance of {tolerance_pct:.2f}%)."
+            f"Проверка пройдена: агрегат дохода изменился на {delta_pct:.2f}% "
+            f"(в пределах допустимого отклонения {tolerance_pct:.2f}%)."
         )
     else:
         result = "failed"
         reason = (
-            f"Validation failed: Revenue aggregate shifted by {delta_pct:.2f}% "
-            f"(exceeds allowed tolerance of {tolerance_pct:.2f}%). "
-            f"Old SUM(order_total) = ${old_aggregate:,.2f}, Proposed Recognized Revenue = ${proposed_aggregate:,.2f}."
+            f"Проверка не пройдена: агрегат дохода изменился на {delta_pct:.2f}% "
+            f"(превышает допустимое отклонение {tolerance_pct:.2f}%). "
+            f"Прежний SUM(order_total) = ${old_aggregate:,.2f}, предложенный признанный доход = ${proposed_aggregate:,.2f}."
         )
 
     return RevenueValidationReport(

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-CLI entry point for invalidate_stale_provenance skill.
-Inspects DataHub live graph metadata against stored Decision Provenance snapshots and updates status to 'stale' on DataHub GMS if dependencies changed.
+Точка входа CLI для навыка invalidate_stale_provenance.
+Сравнивает рабочие метаданные графа DataHub с сохранёнными снимками Decision Provenance и обновляет статус до 'stale' в GMS DataHub при изменении зависимостей.
 """
 import sys
 import json
 import argparse
 from pathlib import Path
 
-# Add project root to sys.path
+# Добавляем корень проекта в sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.invalidation.watcher import (
@@ -20,34 +20,34 @@ from src.invalidation.watcher import (
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Inspect DataHub graph and invalidate stale Decision Provenance artifacts."
+        description="Проверить граф DataHub и сделать устаревшими артефакты Decision Provenance."
     )
     parser.add_argument(
         "--urn",
         default="urn:li:dataset:(urn:li:dataPlatform:snowflake,b2fd91.order_entry_db.analytics.order_details,PROD)",
-        help="Target dataset URN on DataHub",
+        help="URN целевого набора данных в DataHub",
     )
     parser.add_argument(
         "--simulate-remove-glossary",
         action="store_true",
-        help="Simulate a real graph mutation (remove Revenue glossary term) before checking",
+        help="Имитировать реальное изменение графа (удалить термин глоссария дохода) перед проверкой",
     )
     parser.add_argument(
         "--restore-terms",
         action="store_true",
-        help="Restore original dataset glossary terms on DataHub",
+        help="Восстановить в DataHub исходные термины глоссария набора данных",
     )
-    parser.add_argument("--json", action="store_true", help="Output raw JSON result")
+    parser.add_argument("--json", action="store_true", help="Вывести исходный JSON-результат")
     args = parser.parse_args()
 
     if args.restore_terms:
         restore_glossary_terms(args.urn)
-        print(f"Restored original glossary terms for asset: {args.urn}")
+        print(f"Исходные термины глоссария восстановлены для актива: {args.urn}")
         return
 
     if args.simulate_remove_glossary:
         sim_res = simulate_graph_change(args.urn, action="remove_glossary_term")
-        print(f"[Simulated Graph Mutation] Removed term: {sim_res['removed_term_urn']}")
+        print(f"[Имитированное изменение графа] Удалён термин: {sim_res['removed_term_urn']}")
 
     res = check_and_invalidate_provenance(args.urn)
 
@@ -56,14 +56,14 @@ def main():
         return
 
     print("=" * 80)
-    print("SKILL: INVALIDATE STALE PROVENANCE — WATCHER REPORT")
+    print("НАВЫК: ИНВАЛИДИРОВАТЬ УСТАРЕВШЕЕ ОБОСНОВАНИЕ — ОТЧЁТ НАБЛЮДАТЕЛЯ")
     print("=" * 80)
-    print(f"Target Asset URN:     {res.get('asset_urn')}")
-    print(f"Decision ID:          {res.get('decision_id')}")
-    print(f"Provenance Status:    {res.get('new_status', res.get('provenance_status', 'UNKNOWN')).upper()}")
-    print(f"Written to DataHub:   {res.get('written_to_datahub')}")
+    print(f"URN целевого актива:    {res.get('asset_urn')}")
+    print(f"ID решения:             {res.get('decision_id')}")
+    print(f"Статус обоснования:     {res.get('new_status', res.get('provenance_status', 'UNKNOWN')).upper()}")
+    print(f"Записано в DataHub:     {res.get('written_to_datahub')}")
     if res.get("stale_reason"):
-        print(f"Staleness Reason:\n  {res.get('stale_reason')}")
+        print(f"Причина устаревания:\n  {res.get('stale_reason')}")
     print("=" * 80)
 
 

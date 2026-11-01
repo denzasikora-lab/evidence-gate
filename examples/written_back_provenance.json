@@ -5,11 +5,11 @@
   "decision_id": "eg-2026-001",
   "status": "blocked",
   "provenance_status": "stale",
-  "stale_reason": "Evidence graph dependency modified: Glossary term 'Revenue by Customer Class' (urn:li:glossaryTerm:b2fd91.26e268c3-3688-4281-949e-8c1aa2600c02) was removed from asset.",
+  "stale_reason": "Изменена зависимость графа доказательств: термин глоссария «Доход по классу клиента» (urn:li:glossaryTerm:b2fd91.26e268c3-3688-4281-949e-8c1aa2600c02) удалён из актива.",
   "risk_score": 100,
-  "business_rationale": "Change BLOCKED: Field rename 'order_total' -> 'recognized_revenue' causes a metric discrepancy. Validation failed: Revenue aggregate shifted by 13.16% (exceeds allowed tolerance of 1.00%). Old SUM(order_total) = $18,789.67, Proposed Recognized Revenue = $16,317.15.",
+  "business_rationale": "Изменение ЗАБЛОКИРОВАНО: переименование поля 'order_total' -> 'recognized_revenue' вызывает расхождение метрики. Проверка не пройдена: агрегат дохода изменился на 13,16% (превышает допустимое отклонение 1,00%). Прежний SUM(order_total) = $18,789.67, предложенный признанный доход = $16,317.15.",
   "validation_result": "failed",
-  "validation_reason": "Validation failed: Revenue aggregate shifted by 13.16% (exceeds allowed tolerance of 1.00%). Old SUM(order_total) = $18,789.67, Proposed Recognized Revenue = $16,317.15.",
+  "validation_reason": "Проверка не пройдена: агрегат дохода изменился на 13,16% (превышает допустимое отклонение 1,00%). Прежний SUM(order_total) = $18,789.67, предложенный признанный доход = $16,317.15.",
   "required_approvers": [
     "Andrea Garcia",
     "David Kim",
@@ -18,7 +18,7 @@
     "Julia Novak",
     "Karen Okonkwo"
   ],
-  "recommended_action": "Apply the generated dbt compatibility patch (examples/recognized_revenue_patch.sql) and execute migration test suite (examples/test_recognized_revenue_migration.py) before re-submitting for approval.",
+  "recommended_action": "Примените сгенерированный патч совместимости dbt (examples/recognized_revenue_patch.sql) и выполните набор миграционных тестов (examples/test_recognized_revenue_migration.py) перед повторной отправкой на утверждение.",
   "revalidate_after": "2026-08-28T02:28:45.195267+00:00",
   "invalidation_inputs": [
     "dataset_schema:urn:li:dataset:(urn:li:dataPlatform:snowflake",
@@ -38,7 +38,7 @@
   "links": [
     {
       "url": "https://github.com/example/repo/pull/42",
-      "description": "[Evidence Gate Provenance eg-2026-001] Status: BLOCKED (Risk Score 100). Rationale: Change BLOCKED: Field rename 'order_total' -> 'recognized_revenue' causes a metric discrepancy. Validation failed: Reven..."
+      "description": "[Обоснование Evidence Gate eg-2026-001] Статус: BLOCKED (Балл риска 100). Обоснование: Изменение ЗАБЛОКИРОВАНО: переименование поля 'order_total' -> 'recognized_revenue' вызывает расхождение метрики..."
     }
   ]
 }

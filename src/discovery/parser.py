@@ -23,7 +23,7 @@ KNOWN_INCOMPATIBLE_TYPES = {
 
 
 def derive_semantic_mapping(old_type: str, new_type: str) -> str:
-    """Derives semantic compatibility mapping between old and new data types."""
+    """Определяет семантическую совместимость прежнего и нового типа данных."""
     old_t = old_type.lower()
     new_t = new_type.lower()
     if old_t == new_t:
@@ -37,8 +37,8 @@ def derive_semantic_mapping(old_type: str, new_type: str) -> str:
 
 def parse_change_request(source: Union[str, Path, Dict[str, Any]]) -> ChangeRequest:
     """
-    Parses and validates a ChangeRequest payload from a JSON file path, JSON string, or dict.
-    Supports 'field_rename' change type as per Evidence Gate spec.
+    Разбирает и проверяет полезную нагрузку ChangeRequest из пути к JSON-файлу,
+    JSON-строки или словаря. Поддерживает тип изменения 'field_rename' согласно спецификации Evidence Gate.
     """
     if isinstance(source, (str, Path)):
         path = Path(source)
@@ -50,7 +50,7 @@ def parse_change_request(source: Union[str, Path, Dict[str, Any]]) -> ChangeRequ
     elif isinstance(source, dict):
         data = source.copy()
     else:
-        raise ValueError(f"Unsupported input type for parse_change_request: {type(source)}")
+        raise ValueError(f"Неподдерживаемый тип входных данных для parse_change_request: {type(source)}")
 
     req = ChangeRequest(**data)
     if req.semantic_mapping is None:

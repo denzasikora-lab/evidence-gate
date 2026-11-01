@@ -1,116 +1,106 @@
-# Evidence Gate — Setup Guide
+# Evidence Gate — руководство по настройке
 
-## Environment
+## Окружение
 
-This project is configured to run inside **GitHub Codespaces** using Docker-in-Docker via `.devcontainer/devcontainer.json`. Codespaces was chosen deliberately — DataHub's full stack (GMS, OpenSearch, MySQL, Kafka, frontend) needs real memory headroom, and running it locally on a laptop without dedicated resources is a rough experience. If you're setting this up outside Codespaces, you'll need Docker with at least 8GB RAM available and the DataHub CLI installed.
+Проект настроен для **GitHub Codespaces** с Docker-in-Docker через `.devcontainer/devcontainer.json`. Полный стек DataHub (GMS, OpenSearch, MySQL, Kafka и фронтенд) требует заметного объёма памяти. При запуске вне Codespaces нужны Docker с минимум 8 ГБ свободной RAM и CLI DataHub.
 
-## Quickstart Steps
+## Быстрый запуск
 
-### 1. Confirm Environment
+### 1. Проверьте окружение
 
 ```bash
 docker --version
 python --version
 ```
 
-### 2. Start DataHub Local Instance
+### 2. Запустите локальный экземпляр DataHub
 
-Run DataHub Docker Quickstart inside the Codespace terminal:
+Выполните в терминале Codespace:
 
 ```bash
 datahub docker quickstart
 ```
 
-This starts DataHub containers (GMS, OpenSearch, MySQL, Kafka, DataHub Frontend/UI). First run pulls several GB of images and can take a few minutes; subsequent runs are faster.
+Команда запускает GMS, OpenSearch, MySQL, Kafka и интерфейс DataHub. При первом запуске скачиваются образы объёмом в несколько ГБ; последующие запуски быстрее.
 
-### 3. Forwarded Ports & UI Access
+### 3. Перенаправленные порты и доступ к интерфейсу
 
-Codespaces automatically forwards the following ports. The forwarded URL is specific to your own codespace instance — check the **Ports** tab in VS Code, or use `gh codespace ports forward <port>:<port> -c <your-codespace-name>` from your local machine if you're not using the browser-based editor.
+Codespaces автоматически перенаправляет следующие порты. URL уникален для вашего codespace: смотрите вкладку **Ports** в VS Code или используйте `gh codespace ports forward <port>:<port> -c <your-codespace-name>` локально.
 
-- **Port 9002**: DataHub UI
-  - **Local URL**: `http://localhost:9002`
-  - **Credentials**: Username `datahub`, Password `datahub`
-- **Port 8080**: DataHub GMS REST API (`http://localhost:8080`)
-- **Port 8000**: Evidence Gate FastAPI service (`http://localhost:8000`)
+- **Порт 9002** — интерфейс DataHub: `http://localhost:9002`; логин `datahub`, пароль `datahub`.
+- **Порт 8080** — REST API GMS DataHub: `http://localhost:8080`.
+- **Порт 8000** — сервис FastAPI Evidence Gate: `http://localhost:8000`.
 
-### 4. Load Sample Data (`showcase-ecommerce`)
-
-Ingest the `showcase-ecommerce` datapack into DataHub:
+### 4. Загрузите образцы данных (`showcase-ecommerce`)
 
 ```bash
 python scripts/load_showcase_ecommerce.py
 ```
 
-Safe to re-run — it's idempotent against the same URNs.
+Скрипт безопасно запускать повторно: для тех же URN он идемпотентен.
 
-### 5. Install Dependencies & Configure `.env`
+### 5. Установите зависимости и настройте `.env`
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Then edit `.env` and set `DATAHUB_GMS_URL`, `DATAHUB_MCP_URL`, and `GEMINI_API_KEY` (get a key from [Google AI Studio](https://aistudio.google.com/apikey) — used only for turning the deterministic decision facts into readable rationale text, never for the approve/block decision itself).
+Затем задайте в `.env` `DATAHUB_GMS_URL`, `DATAHUB_MCP_URL` и `GEMINI_API_KEY`. Для DataHub Cloud также укажите `DATAHUB_GMS_TOKEN`; для локального `datahub docker quickstart` он не нужен и остаётся пустым. Ключ [Google AI Studio](https://aistudio.google.com/apikey) нужен только для превращения уже вычисленных фактов решения в читаемый текст; он никогда не определяет, разрешить или заблокировать изменение.
 
-### 6. Verify DataHub Connection
-
-Run the verification script to retrieve datasets and lineage:
+### 6. Проверьте подключение к DataHub
 
 ```bash
 python scripts/verify_mcp_connection.py
 ```
 
-### 7. Run the Full Demo Pipeline
+### 7. Запустите полное демо
 
 ```bash
 python scripts/submit_change.py --fixture fixtures/net_revenue_rename.json
 ```
 
-Then open the DataHub UI (port 9002) and search for `order_details` to see the written-back Decision Provenance on the affected asset.
+Откройте интерфейс DataHub на порту 9002 и найдите `order_details`, чтобы увидеть записанное обоснование решения.
 
-## Teardown
+## Остановка и очистка
 
-When you're done working, or before switching to a fresh environment:
-
-### Stop the DataHub stack (keep data)
+### Остановить стек DataHub, сохранив данные
 
 ```bash
 docker compose -f /home/vscode/.datahub/quickstart/docker-compose.yml -p datahub stop
 ```
 
-Or more simply, stop the individual containers:
+Или остановите конкретные контейнеры:
 
 ```bash
 docker stop datahub-frontend-quickstart-1 datahub-datahub-gms-quickstart-1 datahub-datahub-actions-quickstart-1 datahub-kafka-broker-1 datahub-opensearch-1 datahub-mysql-1
 ```
 
-Data persists in Docker volumes, so `datahub docker quickstart` will bring everything back next session without re-ingesting.
+Данные остаются в томах Docker; следующая команда `datahub docker quickstart` поднимет их без повторной загрузки.
 
-### Full reset (removes all DataHub data, including any decisions you've written back)
+### Полный сброс
 
 ```bash
 datahub docker nuke
 ```
 
-Use this if you want to start completely fresh, e.g. to reproduce the demo scenario from a clean slate. You'll need to re-run steps 4 and 7 above afterward.
+Команда удаляет все данные DataHub, в том числе записанные решения. Используйте её, только чтобы начать с чистого состояния; затем повторите шаги 4 и 7.
 
-### Free up disk space (if you hit "disk space below threshold" errors)
+### Освободить место на диске
 
-DataHub's images and old containers can accumulate quickly across repeated restarts. If `datahub docker quickstart` warns about insufficient disk space:
+Если `datahub docker quickstart` сообщает о нехватке места:
 
 ```bash
-docker system df              # see what's using space
-docker system prune -af --volumes   # only run this if you don't need to preserve
-                                     # any currently-stopped container's data —
-                                     # check `docker ps` first to confirm MySQL
-                                     # (or whichever container holds your data)
-                                     # is still Up before using --volumes
+docker system df                 # посмотреть, что занимает место
+docker system prune -af --volumes # запускать, только если не нужно сохранять данные остановленных контейнеров
 ```
 
-### Stop the codespace itself
+Перед `--volumes` проверьте `docker ps`, чтобы не потерять нужные данные контейнера MySQL или другого хранилища.
 
-From `github.com/codespaces`, or via `gh codespace stop -c <your-codespace-name>` — this pauses compute billing. A stopped codespace retains its filesystem (including any Docker volumes) and resumes from where you left off, so this is the normal way to pause work between sessions rather than deleting the codespace.
+### Остановить сам codespace
 
-## Troubleshooting
+На `github.com/codespaces` или командой `gh codespace stop -c <your-codespace-name>`. Это приостанавливает оплату вычислений, сохраняя файловую систему и тома Docker.
 
-See `docs/troubleshooting.md` for common DataHub/MCP connectivity issues, including GMS taking longer than expected to become healthy after a restart, and OpenSearch index staleness after a container recreation.
+## Устранение неполадок
+
+Типичные проблемы подключения DataHub/MCP описаны в `docs/troubleshooting.md`.

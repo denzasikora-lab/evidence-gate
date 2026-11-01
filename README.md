@@ -1,206 +1,191 @@
-# DataHub Organizational Reasoning
+# Организационное мышление DataHub
 
-### First workflow: Evidence Gate
+### Первый рабочий процесс: Evidence Gate
 
-## In one sentence
+## Одним предложением
 
-Evidence Gate turns one-time data governance decisions into graph-linked organizational memory that stays trustworthy by automatically invalidating itself when the underlying metadata changes.
+Evidence Gate превращает разовые решения по управлению данными в связанную с графом организационную память, которая остаётся достоверной: при изменении исходных метаданных она автоматически признаёт себя устаревшей.
 
 ```
-PR / change request → Evidence Gate → Decision Provenance on DataHub → future agent asks "why?" → graph changes → stale → similar change reuses it as precedent
+PR / запрос на изменение → Evidence Gate → Decision Provenance в DataHub → будущий агент спрашивает «почему?» → граф меняется → сведения устаревают → похожее изменение использует их как прецедент
 ```
 
-> This isn't a new audit log or a new approvals system. DataHub already knows what's connected. What it doesn't do yet is remember *why* a decision was made, or notice when that reasoning stops being true. Organizational Reasoning is the pattern; Evidence Gate is the first concrete workflow that implements it, for one high-stakes case: a risky schema/metric change.
+> Это не очередной журнал аудита и не новая система согласований. DataHub уже знает, что с чем связано. Пока он не умеет хранить *почему* было принято решение и замечать, когда это обоснование перестаёт быть верным. «Организационное мышление» — общий подход, а Evidence Gate — его первый конкретный рабочий процесс для важного случая: рискованного изменения схемы или метрики.
 
-**Track:** Metadata-Aware Code Generation & Development (also fits Agents That Do Real Work)
+**Трек:** генерация и разработка кода с учётом метаданных (также подходит для «агентов, которые делают реальную работу»)
 
-## Engineering highlights
+## Ключевые инженерные свойства
 
-- ✅ Deterministic decision engine — rules and validation decide, never the LLM
-- ✅ Read-only, allow-listed validation query
-- ✅ Real DataHub graph throughout — no mocked lineage in the demo path
-- ✅ Decision Provenance written back to the actual asset
-- ✅ Automatic invalidation when graph state changes
-- ✅ Precedent retrieval across similar changes
-- ✅ 39 automated tests, including graceful failure-mode handling
+- ✅ Детерминированный механизм принятия решений: решение принимают правила и проверка, а не LLM.
+- ✅ Проверочный запрос только на чтение и из разрешённого списка.
+- ✅ На всём пути используется настоящий граф DataHub, без имитации происхождения в демо.
+- ✅ Decision Provenance записывается обратно в реальный актив.
+- ✅ Автоматическая инвалидация при изменении состояния графа.
+- ✅ Поиск прецедентов среди похожих изменений.
+- ✅ 39 автоматизированных тестов, в том числе с аккуратной обработкой сбоев.
 
-## The problem I'm actually trying to solve
+## Какую проблему решает проект
 
-Six months after a migration, anyone can tell you who merged the PR. Almost nobody can tell you what evidence justified it, or whether that reasoning still holds up today. I've seen this play out as a developer myself — a schema gets renamed, three dashboards quietly go stale, and the only trace of "why we thought this was safe" is a Slack message someone can't find anymore.
+Через шесть месяцев после миграции любой скажет, кто слил PR. Почти никто не скажет, какие доказательства её оправдывали и остаётся ли это обоснование верным сегодня. Такое регулярно происходит: схему переименовали, три дашборда незаметно устарели, а единственный след «почему мы решили, что это безопасно» — сообщение в Slack, которое уже не найти.
 
-DataHub already has the graph — lineage, ownership, glossary terms, quality state. Evidence Gate uses that graph to actually check a proposed change before it ships, and then writes the reasoning back onto the asset itself, so the *why* lives in the same place as the *what's connected*, not in a separate system nobody checks.
+В DataHub уже есть граф: происхождение, владение, термины глоссария, состояние качества. Evidence Gate использует этот граф, чтобы действительно проверить предложенное изменение до выпуска, а затем записывает обоснование обратно в сам актив. Поэтому *почему* хранится там же, где и *что связано*, а не в отдельной системе, куда никто не заглядывает.
 
-## What it does
+## Что делает Evidence Gate
 
-Before a risky schema change, metric redefinition, or quality override ships, Evidence Gate:
+Перед выпуском рискованного изменения схемы, переопределения метрики или отмены проверки качества Evidence Gate:
 
-- **Reads** DataHub's real context graph — lineage, ownership, glossary terms, quality state — through direct GraphQL/MCP-style queries against DataHub's GMS.
-- **Decides** with deterministic rules. No unconstrained LLM call gets to approve or block anything. For governance decisions, approve/block stays deterministic by design.
-- **Writes the decision back** onto the affected DataHub asset, so it's queryable the same way anything else on that asset is.
-- **Knows when to stop trusting its own past decision** — if something the decision relied on changes later (a glossary link removed, a new failing assertion), it flags the old provenance as stale instead of letting it sit there looking authoritative forever.
+- **Читает** реальный контекстный граф DataHub — происхождение, владение, термины глоссария и состояние качества — прямыми запросами GraphQL/MCP-подобного вида к GMS DataHub.
+- **Принимает решение** детерминированными правилами. Неконтролируемый вызов LLM не может ни разрешить, ни заблокировать изменение.
+- **Записывает решение обратно** в затронутый актив DataHub, чтобы его можно было запросить так же, как остальные данные об активе.
+- **Знает, когда перестать доверять прежнему решению**: если позже меняется условие, на которое оно опиралось (связь с глоссарием удалена, появилась неуспешная проверка), старое обоснование помечается устаревшим.
 
-## Demo scenario
+## Сценарий демо
 
-An engineer proposes renaming `order_total` to `recognized_revenue` in the `order_entry_db.analytics.order_details` Snowflake dataset. This is a real dataset in DataHub's showcase-ecommerce sample data — it's linked to the "Order Total" and "Revenue by Customer Class" glossary terms, and it's consumed downstream by PowerBI, Looker, Tableau, and dbt assets.
+Инженер предлагает переименовать `order_total` в `recognized_revenue` в наборе Snowflake `order_entry_db.analytics.order_details`. Это реальный набор данных из демонстрационных данных `showcase-ecommerce` DataHub; он связан с терминами глоссария «Сумма заказа» и «Доход по классу клиента» и используется активами PowerBI, Looker, Tableau и dbt.
 
-I picked this instead of a synthetic example on purpose: `order_total` (gross transaction value) and "recognized revenue" (an accounting concept that typically excludes tax and unfulfilled orders) aren't actually the same number, and the validation step proves it rather than asserting it.
+Пример выбран намеренно, а не синтетически: `order_total` (валовая стоимость транзакции) и «признанный доход» (бухгалтерское понятие, которое обычно не включает налог и невыполненные заказы) на деле не равны. Этап проверки это доказывает.
 
-1. Evidence Gate pulls real context for the asset — downstream dashboards, owners, lineage, the glossary definitions, current quality state.
-2. It runs a read-only validation query comparing the old and proposed aggregates against fixture order data.
-3. It **blocks** the change — the validation shows a 13.16% shift in the aggregate, well past the tolerance — names who needs to sign off, and generates a compatibility patch plus a migration test.
-4. It writes a Decision Provenance record onto the DataHub asset: rationale, what was checked, the validation result, risk score, and when it should be revisited.
-5. A second, completely separate process asks "why was this blocked?" and gets the answer by reading what's actually stored on DataHub — it doesn't reconstruct or guess at an answer.
-6. I simulate one of the underlying conditions changing (removing the glossary link), and the stored decision flips to stale on DataHub itself.
-7. A second, similar change request comes in, finds this decision as precedent, and says plainly what still applies and what's different about this new case.
+1. Evidence Gate получает реальный контекст актива: зависимые дашборды, владельцев, происхождение, определения глоссария и текущее состояние качества.
+2. Он запускает запрос проверки только на чтение, сравнивая прежний и предложенный агрегаты с фикстурой заказов.
+3. Он **блокирует** изменение: проверка показывает сдвиг агрегата на 13,16%, намного больше допуска; называет требуемых согласующих и создаёт патч совместимости и миграционный тест.
+4. Он записывает в актив DataHub Decision Provenance: обоснование, выполненные проверки, результат валидации, балл риска и срок повторной проверки.
+5. Второй, полностью независимый процесс спрашивает «почему это было заблокировано?» и отвечает, читая реально сохранённые данные из DataHub, а не восстанавливая их по догадкам.
+6. Затем имитируется изменение одного из исходных условий (удаление связи с глоссарием), и сохранённое решение получает в DataHub статус `stale`.
+7. Поступает похожий второй запрос; он находит решение как прецедент и прямо показывает, что остаётся применимым, а что отличается.
 
-## Architecture
+## Архитектура
 
 ```mermaid
 flowchart LR
-  A["PR-style change request"] --> B["Evidence Gate API"]
-  B --> C["Agent orchestrator"]
-  C --> D["DataHub GraphQL/MCP queries\nDiscover live context"]
-  C --> E["Evidence collector\nBounded evidence bundle"]
-  C --> F["DataHub Skills\nRisk, approvers, patch, receipt"]
-  C --> G["DuckDB validation\nRead-only, deterministic query"]
-  G --> H["Decision engine\nDeterministic rules + Gemini explanation"]
-  H --> I["PR comment / generated patch"]
-  H --> J["DataHub write-back"]
-  J --> K["Decision Provenance\nreasoning + evidence + validation"]
-  K --> L["Graph-change watcher\nInvalidate or revalidate"]
+  A["PR-подобный запрос на изменение"] --> B["API Evidence Gate"]
+  B --> C["Оркестратор агента"]
+  C --> D["Запросы DataHub GraphQL/MCP\nПолучение рабочего контекста"]
+  C --> E["Сборщик доказательств\nОграниченный пакет доказательств"]
+  C --> F["Навыки DataHub\nРиск, согласующие, патч, квитанция"]
+  C --> G["Проверка DuckDB\nТолько чтение, детерминированный запрос"]
+  G --> H["Механизм решений\nДетерминированные правила + объяснение Gemini"]
+  H --> I["Комментарий к PR / созданный патч"]
+  H --> J["Запись обратно в DataHub"]
+  J --> K["Decision Provenance\nобоснование + доказательства + проверка"]
+  K --> L["Наблюдатель изменений графа\nИнвалидация или повторная проверка"]
 ```
 
-**On Agent Context Kit and Analytics Agent specifically:** I evaluated both directly against this project before deciding not to use them. DataHub's Agent Context Kit (`datahub-agent-context`) exposes `get_lineage`, `get_entities`, and `get_dataset_assertions` — but running these against my local DataHub quickstart, `get_lineage` reads from the search index and returned zero downstream consumers for an asset that direct GraphQL graph traversal shows has real BI dashboard consumers; the search index just wasn't caught up. `get_dataset_assertions` had the same gap. So I kept direct GraphQL queries, which read the graph store rather than the search index.
+**О выборе Agent Context Kit и Analytics Agent.** Оба инструмента были проверены непосредственно в этом проекте и намеренно не используются. DataHub Agent Context Kit (`datahub-agent-context`) предоставляет `get_lineage`, `get_entities` и `get_dataset_assertions`, но в локальном DataHub Quickstart `get_lineage` читает поисковый индекс и вернул ноль зависимых потребителей для актива, у которого прямой обход графа GraphQL находит реальные BI-дашборды. Индекс просто не успел обновиться; та же проблема была у `get_dataset_assertions`. Поэтому здесь используются прямые запросы GraphQL, которые читают хранилище графа, а не поисковый индекс.
 
-I also evaluated the standalone Analytics Agent app for the validation step. It's LangGraph-based and generates SQL via an LLM — which is a good fit for open-ended "ask a question" use cases, but a bad fit here: this project's one hard rule is that validation stays deterministic and allow-listed (see below), and LLM-generated SQL is neither. I kept a plain DuckDB query instead.
+Отдельно проверялось приложение Analytics Agent для валидации. Оно построено на LangGraph и генерирует SQL через LLM; это подходит для открытых запросов «задать вопрос», но не для проекта, в котором проверка обязана быть детерминированной и разрешённой заранее. Поэтому используется простой запрос DuckDB.
 
-## See it happen
+## Посмотрите, как это работает
 
-The single most important thing this project does — noticing when a decision it made no longer holds — isn't easy to convey in text. Here it is happening for real, against a live DataHub instance:
+Главная особенность проекта — распознать, что собственное прежнее решение больше не верно, — плохо передаётся текстом. Ниже это происходит в реальном времени в запущенном DataHub:
 
-![Decision Provenance flipping to stale when the underlying glossary term is removed](docs/screenshots/stale_flip.gif)
+![Decision Provenance становится устаревшим после удаления исходного термина глоссария](docs/screenshots/stale_flip.gif)
 
-That's not staged. The terminal output is a real, unedited run of `scripts/run_demo_timeline.py` against the actual asset in this repo's fixtures.
+Это не постановка: вывод терминала — настоящий неизменённый запуск `scripts/run_demo_timeline.py` для реального актива из фикстур этого репозитория.
 
-### The decision, sitting on the actual DataHub asset
+### Решение прямо в реальном активе DataHub
 
-Not a separate audit log — these are real custom properties on `ORDER_DETAILS` itself, readable the same way you'd read any other field on the asset:
+Это не отдельный журнал аудита: перед вами реальные пользовательские свойства самого `ORDER_DETAILS`, читаемые как и любое другое поле актива.
 
-![DataHub Properties tab showing the eg_* fields: decision_id, status, risk_score, business_rationale, required_approvers](docs/screenshots/properties_tab.png)
+![Вкладка свойств DataHub с полями eg_*: decision_id, status, risk_score, business_rationale, required_approvers](docs/screenshots/properties_tab.png)
 
-### Linked back to the source, and surfaced where a team already looks
+### Связь с источником и отображение там, где команда уже работает
 
-![Documentation tab showing the Decision Provenance resource link back to the PR](docs/screenshots/documentation_tab.png)
+![Вкладка документации со ссылкой на ресурс Decision Provenance, ведущей к PR](docs/screenshots/documentation_tab.png)
 
-![Incidents tab showing the native DataHub operational incident for the blocked change](docs/screenshots/incidents_tab.png)
+![Вкладка инцидентов с нативным операционным инцидентом DataHub для заблокированного изменения](docs/screenshots/incidents_tab.png)
 
-## What I think is actually new here, and what isn't
+## Что здесь действительно ново
 
-I'm not claiming to have invented lineage, audit logs, or approval workflows — DataHub and plenty of other tools already do those well. What I haven't seen elsewhere: tying a specific decision to the exact evidence that justified it, letting that reasoning get reused as precedent for a similar future change, and detecting when the graph state behind an old decision has drifted. Everything in the demo path runs against a real, live DataHub instance — no static JSON standing in for the graph, no mocked lineage.
+Проект не претендует на изобретение происхождения, журналов аудита или процессов согласования — DataHub и другие инструменты уже хорошо это умеют. Новизна в другом: привязать конкретное решение к точным доказательствам, позволить использовать это рассуждение как прецедент для похожего будущего изменения и обнаружить, когда состояние графа, лежавшее в основе старого решения, разошлось с реальностью. Весь путь демо работает с настоящим DataHub: статический JSON не подменяет граф, происхождение не имитируется.
 
-## Repository layout
+## Структура репозитория
 
 ```
 .
 ├── README.md
 ├── LICENSE                  # Apache 2.0
-├── SKILL.md                 # Build/execution guide for the coding agent
+├── SKILL.md                 # Руководство по сборке и проверке для кодового агента
 ├── .devcontainer/
-│   └── devcontainer.json    # Codespaces config: docker-in-docker, Python
+│   └── devcontainer.json    # Конфигурация Codespaces: Docker-in-Docker, Python
 ├── src/
-│   ├── api/                 # FastAPI orchestrator (Evidence Gate entrypoint)
-│   ├── discovery/            # DataHub GraphQL/MCP-style client calls
-│   ├── evidence/              # Evidence bundle construction
-│   ├── validation/            # Read-only revenue comparison query (DuckDB/fixture)
-│   ├── decision/              # Deterministic risk rules + LLM explanation
-│   ├── remediation/           # dbt-compatible patch + test generation
-│   ├── writeback/              # Decision Provenance write-back to DataHub
-│   ├── invalidation/          # Graph-change watcher
-│   └── precedent/             # Precedent retrieval + comparison
-├── skills/                    # Standalone CLI wrappers around the same logic
-│   ├── assess_change_risk/
-│   ├── create_decision_provenance/
-│   ├── find_similar_precedents/
-│   └── invalidate_stale_provenance/
-├── oss-contribution-draft/    # Generalized skill prepared for datahub-skills
-│   └── datahub-decision-provenance/
-├── examples/                  # Sample schema diff, evidence bundle, blocked
-│   │                           decision, generated patch, provenance payload
-├── tests/                     # Unit tests: risk scoring, validation, write-back,
-│   │                           invalidation, precedent comparison
-├── fixtures/                   # showcase-ecommerce datapack + revenue fixture
-└── docs/
-    ├── setup.md
-    ├── troubleshooting.md
-    ├── test-report.md
-    ├── demo-script.md
-    └── oss-contribution.md
+│   ├── api/                 # Оркестратор FastAPI (точка входа Evidence Gate)
+│   ├── discovery/           # Клиентские вызовы DataHub GraphQL/MCP-подобного вида
+│   ├── evidence/            # Построение пакета доказательств
+│   ├── validation/          # Запрос сравнения дохода только на чтение (DuckDB/фикстура)
+│   ├── decision/            # Детерминированные правила риска и объяснение LLM
+│   ├── remediation/         # Создание совместимого с dbt патча и теста
+│   ├── writeback/           # Запись Decision Provenance в DataHub
+│   ├── invalidation/        # Наблюдатель изменений графа
+│   └── precedent/           # Поиск и сравнение прецедентов
+├── skills/                  # Независимые обёртки CLI вокруг той же логики
+├── oss-contribution-draft/  # Обобщённый навык, подготовленный для datahub-skills
+├── examples/                # Примеры диффа схемы, доказательств, решения, патча и обоснования
+├── tests/                   # Модульные тесты: риск, проверка, запись, инвалидация, прецеденты
+├── fixtures/                # Пакет showcase-ecommerce и фикстура дохода
+└── docs/                    # Настройка, устранение неполадок, тесты, демо и OSS-вклад
 ```
 
-## Running it yourself
+## Запуск
 
-I built this inside a **GitHub Codespace**, not on my own machine — my laptop doesn't have the RAM to run DataHub's Docker stack comfortably, and Codespaces' free tier (2 cores, 8GB RAM, 32GB storage) covers it without needing to install Docker locally at all. The devcontainer config in this repo brings up Docker-in-Docker automatically.
+Проект создан в **GitHub Codespace**, а не на локальной машине: стек Docker для DataHub требует значительного объёма памяти. Бесплатный тариф Codespaces (2 ядра, 8 ГБ RAM, 32 ГБ хранилища) покрывает это без локальной установки Docker; конфигурация devcontainer автоматически включает Docker-in-Docker.
 
 ```bash
-# 0. Open this repo in a Codespace (GitHub UI: Code -> Codespaces -> Create
-#    codespace on main). The .devcontainer/devcontainer.json config brings
-#    up Docker-in-Docker automatically — no manual Docker install needed.
+# 0. Откройте репозиторий в Codespace: Code → Codespaces → Create codespace on main.
+#    Конфигурация .devcontainer/devcontainer.json автоматически поднимет Docker-in-Docker.
 
-# 1. Start DataHub and load sample data (inside the codespace terminal)
+# 1. Запустите DataHub и загрузите образцы данных в терминале Codespace
 datahub docker quickstart
 python scripts/load_showcase_ecommerce.py
 
-# 2. Install dependencies
+# 2. Установите зависимости
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Configure environment
-cp .env.example .env   # set DATAHUB_GMS_URL, DATAHUB_MCP_URL, GEMINI_API_KEY
+# 3. Настройте окружение
+cp .env.example .env   # задайте DATAHUB_GMS_URL, DATAHUB_MCP_URL, GEMINI_API_KEY
 
-# 4. Run the API
+# 4. Запустите API
 uvicorn src.api.main:app --reload
 
-# 5. Submit the included fixture change request
+# 5. Отправьте включённый запрос на изменение из фикстуры
 python scripts/submit_change.py --fixture fixtures/net_revenue_rename.json
 
-# 6. Inspect the Decision Provenance written back to DataHub
-# Codespaces auto-forwards port 9002 - open the forwarded URL from the
-# "Ports" tab, or use the PORTS panel link. Find the affected asset there.
+# 6. Просмотрите записанное в DataHub обоснование решения
+# Codespaces автоматически перенаправляет порт 9002. Откройте URL на вкладке «Порты»
+# и найдите затронутый актив.
 ```
 
-Full environment variables, teardown steps, port-forwarding notes, and troubleshooting live in `docs/setup.md` and `docs/troubleshooting.md`.
+Полное описание переменных окружения, остановки стенда, перенаправления портов и устранения неполадок находится в `docs/setup.md` и `docs/troubleshooting.md`.
 
-If you're on the free Codespaces tier: stop the codespace (not just close the tab) when you're done for the day — a stopped codespace only costs a small amount of storage, not compute hours.
+На бесплатном тарифе Codespaces завершайте работу остановкой codespace, а не закрытием вкладки: остановленный codespace оплачивает только небольшой объём хранения, но не вычислительное время.
 
-## What this deliberately doesn't do
+## Чего проект намеренно не делает
 
-- It doesn't auto-merge or auto-deploy anything. An `approved` result still means the listed people need to actually sign off.
-- The model never makes the approve/block call by itself — that stays rule-based. The model explains evidence and drafts remediation, nothing more.
-- Validation only runs against fixture/sample data, read-only, and only the one pre-registered comparison query — no arbitrary query generation.
-- This covers one change type end-to-end (a revenue field rename) rather than half-covering many. I'd rather have one path that's actually solid than five that are theoretical.
+- Он не сливает PR и не развёртывает изменения автоматически. Результат `approved` по-прежнему требует фактического согласования перечисленными людьми.
+- Модель никогда сама не принимает решение разрешить или заблокировать изменение: это делают правила. Модель лишь объясняет доказательства и составляет план исправления.
+- Проверка работает только с фикстурой или образцом данных, в режиме чтения и только с одним заранее зарегистрированным запросом сравнения; произвольный SQL не генерируется.
+- Сквозным образом покрывается один тип изменения (переименование поля дохода), а не множество недоделанных сценариев.
 
-## Safety model
+## Модель безопасности
 
-Short version of how this stays safe to run against a real DataHub instance:
+- **Область чтения:** запросы обнаружения (происхождение, глоссарий, владение, качество) только читают граф DataHub и не меняют структурные метаданные актива.
+- **Область проверки:** единственный запрос совместимости внесён в разрешённый список и жёстко задан; LLM не генерирует произвольный SQL, а проверка всегда работает только с локальными данными фикстуры, никогда с production.
+- **Область записи:** система пишет только Decision Provenance — пользовательские свойства, ссылку institutional memory и инцидент при блокировке; она не меняет схему, не сливает PR и не развёртывает код.
+- **Обязательное участие человека:** `approved` перечисляет необходимых согласующих, но не заменяет их согласование. Заблокированное изменение остаётся заблокированным, пока человек не исправит ситуацию.
+- **Изоляция LLM:** Gemini получает только уже вычисленные факты — балл риска, сработавшие правила и дельту проверки. Она превращает их в читаемый текст или черновик миграционного патча и не может повлиять на решение. Явная проверка галлюцинаций отклоняет ответы, ссылающиеся на несработавшие сигналы, и возвращает шаблонный текст.
 
-- **Read scope**: discovery queries (lineage, glossary, ownership, quality) are read-only against DataHub's graph. Nothing here mutates an asset's structural metadata.
-- **Validation scope**: the one compatibility query is allow-listed and hardcoded — it's not an LLM generating arbitrary SQL against anything, and it only ever runs against local fixture data, never production.
-- **Write scope**: the only thing this system writes anywhere is the Decision Provenance record itself (custom properties, an institutional memory link, and an incident if blocked) — never a schema change, never a merge, never a deploy.
-- **Human-in-the-loop by design**: `approved` names required approvers; it doesn't act as their approval. A blocked change stays blocked until a human actually does something about it.
-- **LLM containment**: Gemini only ever receives already-computed facts (risk score, which rules fired, the validation delta) and turns them into readable prose or drafts a migration patch — it has no path to change the decision itself. This is enforced with an explicit hallucination check that rejects LLM output referencing signals that didn't actually fire, falling back to a template if it does.
+## Примеры
 
-## Examples
+`examples/` содержит полное прохождение без запуска: входной дифф схемы, пакет доказательств, вывод заблокированного решения, сгенерированный патч dbt и реальную полезную нагрузку обоснования, записанную в DataHub.
 
-`examples/` has a full walkthrough without needing to run anything: the input schema diff, the evidence bundle, the blocked decision output, the generated dbt patch, and the actual provenance payload written back to DataHub.
+## Вклад в открытый исходный код
 
-## Open-source contribution
-
-I pulled the write-back/precedent/staleness logic out into a generalized skill for `datahub-project/datahub-skills` and opened a real pull request from my own account:
+Логика записи, прецедентов и устаревания вынесена в обобщённый навык для `datahub-project/datahub-skills`; из личной учётной записи автора открыт настоящий pull request:
 
 https://github.com/datahub-project/datahub-skills/pull/71
 
-See `docs/oss-contribution.md` for more detail on what it covers and why.
+Подробности и обоснование приведены в `docs/oss-contribution.md`.
 
-## License
+## Лицензия
 
-Apache 2.0 — see [LICENSE](./LICENSE).
+Apache 2.0 — см. [LICENSE](./LICENSE).

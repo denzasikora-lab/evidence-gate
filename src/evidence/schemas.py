@@ -24,7 +24,7 @@ class DownstreamConsumer(BaseModel):
 class AssertionRef(BaseModel):
     urn: str
     type: str
-    status: str  # "PASSED", "FAILED", etc.
+    status: str  # "PASSED", "FAILED" и т. п.
 
 
 class EvidenceBundle(BaseModel):
@@ -41,7 +41,7 @@ class EvidenceBundle(BaseModel):
 
     @property
     def all_glossary_terms(self) -> List[GlossaryTermRef]:
-        """Combined list of field-level and dataset-level glossary terms."""
+        """Объединённый список терминов глоссария уровня поля и набора данных."""
         seen = set()
         terms = []
         for term in self.field_glossary_terms + self.dataset_glossary_terms:

@@ -144,7 +144,7 @@ def test_failure_handling_missing_validation_source():
     """
     val_report = validate_revenue_compatibility(csv_path="fixtures/nonexistent_file_path_123.csv")
     assert val_report.result == "unavailable"
-    assert "Fixture CSV not found" in val_report.reason
+    assert "CSV-фикстура не найдена" in val_report.reason
 
     req = ChangeRequest(
         change_id="cr-test-missing-val",
@@ -168,7 +168,7 @@ def test_failure_handling_missing_validation_source():
     assert receipt.validation.result == "unavailable"
     assert receipt.status == "needs-review"
     assert receipt.risk_score >= 50
-    assert "Validation source unavailable" in receipt.recommended_action
+    assert "Источник проверки недоступен" in receipt.recommended_action
 
 
 def test_failure_handling_corrupted_validation_source():
@@ -184,7 +184,7 @@ def test_failure_handling_corrupted_validation_source():
     try:
         val_report = validate_revenue_compatibility(csv_path=tmp_path)
         assert val_report.result == "unavailable"
-        assert "Validation source unavailable" in val_report.reason
+        assert "Источник проверки недоступен" in val_report.reason
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 

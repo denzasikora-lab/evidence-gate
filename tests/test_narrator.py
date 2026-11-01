@@ -75,10 +75,10 @@ def test_fallback_when_gemini_api_key_missing(sample_inputs, capsys):
 
         captured = capsys.readouterr()
         assert "[LLM_UNAVAILABLE]" in captured.err or "[LLM_UNAVAILABLE]" in captured.out
-        assert "Falling back to template rationale" in captured.err or captured.out
+        assert "Используется шаблонное обоснование" in captured.err or captured.out
         assert "order_total" in rationale
         assert "recognized_revenue" in rationale
-        assert "Change BLOCKED" in rationale
+        assert "Изменение ЗАБЛОКИРОВАНО" in rationale
 
 
 def test_fallback_when_gemini_api_call_raises_exception(sample_inputs, capsys):
@@ -105,7 +105,7 @@ def test_fallback_when_gemini_api_call_raises_exception(sample_inputs, capsys):
             captured = capsys.readouterr()
             assert "[LLM_UNAVAILABLE]" in captured.err or "[LLM_UNAVAILABLE]" in captured.out
             assert "API quota exceeded or network error" in captured.err or captured.out
-            assert "Change BLOCKED" in rationale
+            assert "Изменение ЗАБЛОКИРОВАНО" in rationale
             assert "order_total" in rationale
 
 
@@ -141,7 +141,7 @@ def test_hallucination_detection_triggers_fallback(sample_inputs, capsys):
             captured = capsys.readouterr()
             assert "[LLM_HALLUCINATION_DETECTED]" in captured.err or "[LLM_HALLUCINATION_DETECTED]" in captured.out
             assert rationale != hallucinated_text
-            assert "Change BLOCKED" in rationale
+            assert "Изменение ЗАБЛОКИРОВАНО" in rationale
 
 
 def test_live_gemini_api_no_hallucinated_signals(sample_inputs):
@@ -244,7 +244,7 @@ def test_downstream_consumer_hallucination_triggers_fallback(sample_inputs, caps
             assert "[LLM_HALLUCINATION_DETECTED]" in captured.err or "[LLM_HALLUCINATION_DETECTED]" in captured.out
             assert rationale != hallucinated_text
             assert "despite having no downstream" not in rationale.lower()
-            assert "Change BLOCKED" in rationale
+            assert "Изменение ЗАБЛОКИРОВАНО" in rationale
 
 
 def test_forbidden_phrase_executive_triggers_fallback(sample_inputs, capsys):
@@ -279,6 +279,5 @@ def test_forbidden_phrase_executive_triggers_fallback(sample_inputs, capsys):
             assert "[LLM_HALLUCINATION_DETECTED]" in captured.err or "[LLM_HALLUCINATION_DETECTED]" in captured.out
             assert rationale != executive_text
             assert "executive" not in rationale.lower()
-            assert "Change BLOCKED" in rationale
-
+            assert "Изменение ЗАБЛОКИРОВАНО" in rationale
 

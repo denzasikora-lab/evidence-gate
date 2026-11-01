@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-CLI entry point for create_decision_provenance skill.
-Writes Decision Provenance structured custom properties, documentation links, and operational incidents back to DataHub GMS.
+Точка входа CLI для навыка create_decision_provenance.
+Записывает структурированные свойства Decision Provenance, ссылки на документацию и операционные инциденты в GMS DataHub.
 """
 import sys
 import json
 import argparse
 from pathlib import Path
 
-# Add project root to sys.path
+# Добавляем корень проекта в sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.api.schemas import ChangeRequest
@@ -22,14 +22,14 @@ from src.writeback.writer import write_decision_provenance
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Write Decision Provenance metadata artifact back to DataHub GMS."
+        description="Записать артефакт метаданных Decision Provenance обратно в GMS DataHub."
     )
     parser.add_argument(
         "--fixture",
         default="fixtures/net_revenue_rename.json",
-        help="Path to ChangeRequest JSON fixture",
+        help="Путь к JSON-фикстуре ChangeRequest",
     )
-    parser.add_argument("--json", action="store_true", help="Output raw JSON write-back result")
+    parser.add_argument("--json", action="store_true", help="Вывести исходный JSON результата записи")
     args = parser.parse_args()
 
     req = parse_change_request(args.fixture)
@@ -45,14 +45,14 @@ def main():
         return
 
     print("=" * 80)
-    print("SKILL: CREATE DECISION PROVENANCE — WRITE-BACK SUCCESS")
+    print("НАВЫК: СОЗДАТЬ ОБОСНОВАНИЕ РЕШЕНИЯ — ЗАПИСЬ ВЫПОЛНЕНА")
     print("=" * 80)
-    print(f"Target Asset URN:     {res['asset_urn']}")
-    print(f"Decision ID:          {res['decision_id']}")
-    print(f"Decision Status:      {res['status'].upper()}")
-    print(f"Custom Props Emitted: {res['custom_properties_emitted']}")
-    print(f"Documentation Link:   {res['documentation_link']}")
-    print(f"Native Incident URN:  {res['incident_urn']}")
+    print(f"URN целевого актива:               {res['asset_urn']}")
+    print(f"ID решения:                         {res['decision_id']}")
+    print(f"Статус решения:                     {res['status'].upper()}")
+    print(f"Записано пользовательских свойств:  {res['custom_properties_emitted']}")
+    print(f"Ссылка на документацию:             {res['documentation_link']}")
+    print(f"URN нативного инцидента:            {res['incident_urn']}")
     print("=" * 80)
 
 

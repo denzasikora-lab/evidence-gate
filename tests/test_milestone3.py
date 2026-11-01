@@ -25,8 +25,8 @@ def test_duckdb_validation_query_and_delta():
     assert report.proposed_aggregate == 16317.15
     assert report.delta_pct == 13.1589
     assert report.tolerance_pct == 1.0
-    assert "shifted by 13.16%" in report.reason
-    assert "exceeds allowed tolerance of 1.00%" in report.reason
+    assert "изменился на 13.16%" in report.reason
+    assert "превышает допустимое отклонение 1.00%" in report.reason
 
 
 def test_deterministic_validation_runs_twice():
@@ -87,7 +87,7 @@ def test_validation_failure_overrides_low_risk_score():
     # Assert that validation failure overrides low Milestone 2 risk score (20 -> 100)
     assert receipt.status == "blocked"
     assert receipt.risk_score == 100
-    assert "BLOCKED" in receipt.business_rationale
+    assert "ЗАБЛОКИРОВАНО" in receipt.business_rationale
 
 
 def test_validation_success_retains_milestone2_risk_score():
@@ -150,10 +150,12 @@ def test_remediation_artifacts_generation():
 
 
 def test_generated_migration_test_executes():
-    """Verifies that the generated migration test in examples/ actually executes via pytest."""
+    """Проверяет, что сгенерированный миграционный тест действительно запускается через pytest."""
     import subprocess
+    import sys
+
     result = subprocess.run(
-        ["pytest", "examples/test_recognized_revenue_migration.py"],
+        [sys.executable, "-m", "pytest", "examples/test_recognized_revenue_migration.py"],
         capture_output=True,
         text=True,
     )

@@ -16,17 +16,22 @@ def write_decision_provenance(
     receipt: DecisionReceipt, gms_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Writes Decision Provenance structured metadata back to the target DataHub asset(s):
-    1. Custom Properties (DatasetPropertiesClass): decision ID, status, risk score, rationale, validation, approvers, revalidate expiry, invalidation inputs.
-    2. Documentation Link (InstitutionalMemoryClass): PR URL and summary link.
-    3. Native Incident (raiseIncident mutation): Raised if decision status is 'blocked'.
+    Записывает структурированные метаданные Decision Provenance обратно в целевой актив DataHub:
+    1. Пользовательские свойства (DatasetPropertiesClass): ID и статус решения, балл риска, обоснование, проверка, согласующие, срок перепроверки и входы инвалидации.
+    2. Ссылка на документацию (InstitutionalMemoryClass): URL запроса на слияние и ссылка на сводку.
+    3. Нативный инцидент (мутация raiseIncident): создаётся, если статус решения — 'blocked'.
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     asset_urn = receipt.affected_assets[0]
 
-    # 1. Prepare custom properties payload
+    # 1. Готовим полезную нагрузку пользовательских свойств.
     custom_props = {
         "eg_decision_id": receipt.decision_id,
         "eg_status": receipt.status,
@@ -44,7 +49,7 @@ def write_decision_provenance(
         "eg_change_url": receipt.change_url,
     }
 
-    # Fetch existing properties to preserve asset name
+    # Получаем существующие свойства, чтобы сохранить имя актива.
     existing_res = graph.execute_graphql(
         """
         query getAssetName($urn: String!) {
@@ -62,7 +67,7 @@ def write_decision_provenance(
         or "ORDER_DETAILS"
     )
 
-    # Emit DatasetProperties aspect with Decision Provenance custom properties
+    # Отправляем аспект DatasetProperties с пользовательскими свойствами Decision Provenance.
     props_mcp = MetadataChangeProposalWrapper(
         entityUrn=asset_urn,
         aspect=DatasetPropertiesClass(
@@ -72,7 +77,7 @@ def write_decision_provenance(
     )
     graph.emit_mcp(props_mcp)
 
-    # 2. Emit Documentation link (InstitutionalMemoryClass)
+    # 2. Отправляем ссылку на документацию (InstitutionalMemoryClass).
     now_ms = int(datetime.now().timestamp() * 1000)
     memory_mcp = MetadataChangeProposalWrapper(
         entityUrn=asset_urn,
@@ -80,7 +85,7 @@ def write_decision_provenance(
             elements=[
                 InstitutionalMemoryMetadataClass(
                     url=receipt.change_url,
-                    description=f"[Evidence Gate Provenance {receipt.decision_id}] Status: {receipt.status.upper()} (Risk Score {receipt.risk_score}). Rationale: {receipt.business_rationale[:120]}...",
+                    description=f"[Обоснование Evidence Gate {receipt.decision_id}] Статус: {receipt.status.upper()} (Балл риска {receipt.risk_score}). Обоснование: {receipt.business_rationale[:120]}...",
                     createStamp=AuditStampClass(
                         time=now_ms, actor="urn:li:corpuser:datahub"
                     ),
@@ -91,7 +96,7 @@ def write_decision_provenance(
     graph.emit_mcp(memory_mcp)
 
     incident_urn = None
-    # 3. If decision is blocked, raise a native DataHub Incident
+    # 3. Если решение заблокировано, создаём нативный инцидент DataHub.
     if receipt.status == "blocked":
         mutation = """
         mutation raiseInc($input: RaiseIncidentInput!) {
@@ -102,8 +107,8 @@ def write_decision_provenance(
             "input": {
                 "type": "OPERATIONAL",
                 "resourceUrn": asset_urn,
-                "title": f"[Evidence Gate] Schema Change Blocked ({receipt.decision_id})",
-                "description": f"{receipt.business_rationale} Required approvers: {', '.join(receipt.required_approvers)}.",
+                "title": f"[Evidence Gate] Изменение схемы заблокировано ({receipt.decision_id})",
+                "description": f"{receipt.business_rationale} Обязательные согласующие: {', '.join(receipt.required_approvers)}.",
             }
         }
         try:

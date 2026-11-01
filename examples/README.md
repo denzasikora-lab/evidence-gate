@@ -1,10 +1,10 @@
-# Examples Directory Index
+# Указатель каталога примеров
 
-This directory contains real, captured runtime artifacts produced during Evidence Gate execution against live DataHub GMS and metric validation datasets:
+Этот каталог содержит реальные артефакты выполнения Evidence Gate, полученные при работе с GMS DataHub и данными проверки метрик:
 
-- **`change_request.json`**: Input `ChangeRequest` schema diff payload proposing `order_total` -> `recognized_revenue` on Snowflake `order_details`.
-- **`evidence_bundle.json`**: Populated `EvidenceBundle` containing real owners (`David Kim`, `Julia Novak`), glossary terms (`Revenue by Customer Class`, `Order Total`), 13 downstream lineage consumers, and quality assertion metadata collected from DataHub.
-- **`blocked_decision_receipt.json`**: Final deterministic `DecisionReceipt` payload combining Milestone 2 risk rules (Risk Score 75) and Milestone 3 DuckDB metric validation (13.16% shift -> BLOCKED).
-- **`recognized_revenue_patch.sql`**: Generated dbt/SQL compatibility model patch for `recognized_revenue`.
-- **`test_recognized_revenue_migration.py`**: Generated pytest migration test file validating bounds and zero-discrepancy conditions.
-- **`written_back_provenance.json`**: Real written-back metadata retrieved from DataHub GMS, including 13 dataset custom properties, PR documentation link, and operational incident status.
+- **`change_request.json`** — входная полезная нагрузка диффа схемы `ChangeRequest`, предлагающая заменить `order_total` на `recognized_revenue` в Snowflake `order_details`.
+- **`evidence_bundle.json`** — заполненный `EvidenceBundle` с реальными владельцами (`David Kim`, `Julia Novak`), терминами глоссария, 13 зависимыми потребителями происхождения и метаданными проверок качества из DataHub.
+- **`blocked_decision_receipt.json`** — итоговая детерминированная полезная нагрузка `DecisionReceipt`, объединяющая правила риска этапа 2 (75) и проверку метрики DuckDB этапа 3 (сдвиг 13,16% → `BLOCKED`).
+- **`recognized_revenue_patch.sql`** — созданный патч модели совместимости dbt/SQL для `recognized_revenue`.
+- **`test_recognized_revenue_migration.py`** — созданный тест миграции pytest, проверяющий границы и нулевое расхождение.
+- **`written_back_provenance.json`** — реальные метаданные, считанные из GMS DataHub после записи: 13 пользовательских свойств набора данных, ссылка на документацию PR и статус операционного инцидента.

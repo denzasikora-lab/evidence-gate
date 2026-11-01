@@ -17,14 +17,14 @@ def narrate_precedent_comparison(
     prior_id: str,
 ) -> Tuple[List[str], List[str]]:
     """
-    Uses Gemini LLM to naturally rephrase deterministic precedent comparison facts.
-    Falls back to deterministic template lists if GEMINI_API_KEY is missing or API call fails.
+    Использует Gemini LLM, чтобы естественно перефразировать детерминированные факты сравнения прецедентов.
+    Возвращает детерминированные списки шаблонов, если GEMINI_API_KEY отсутствует или вызов API не удался.
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         warning_msg = (
-            "[LLM_UNAVAILABLE] Falling back to template precedent comparison — "
-            "Gemini call failed: GEMINI_API_KEY environment variable is not set."
+            "[LLM_UNAVAILABLE] Используется шаблонное сравнение прецедентов — "
+            "вызов Gemini не выполнен: переменная окружения GEMINI_API_KEY не задана."
         )
         print(warning_msg, file=sys.stderr)
         return applies_list, differs_list
@@ -32,21 +32,21 @@ def narrate_precedent_comparison(
     try:
         client = genai.Client(api_key=api_key)
         prompt = f"""
-You are Evidence Gate, an automated data governance engine.
-Rephrase these deterministic precedent comparison facts between candidate Change Request '{candidate_id}' and prior decision '{prior_id}'.
+Вы — Evidence Gate, автоматизированный механизм управления данными.
+Перефразируйте эти детерминированные факты сравнения прецедентов для кандидатного Change Request '{candidate_id}' и предыдущего решения '{prior_id}'.
 
-DETERMINISTIC FACTS (FIXED - DO NOT ALTER OR OMIT):
-What Still Applies:
+ДЕТЕРМИНИРОВАННЫЕ ФАКТЫ (ФИКСИРОВАНЫ — НЕ МЕНЯЙТЕ И НЕ ОПУСКАЙТЕ):
+Что по-прежнему применимо:
 {json.dumps(applies_list, indent=2)}
 
-What Differs:
+Что отличается:
 {json.dumps(differs_list, indent=2)}
 
-INSTRUCTIONS:
-1. Rephrase the bullet points under 'What Still Applies' and 'What Differs' into professional, natural language sentences.
-2. Return a valid JSON object with EXACTLY two keys: "what_still_applies" (list of strings) and "what_differs" (list of strings).
-3. Do not add, remove, or change any underlying facts or decision outcomes.
-4. Do not use the word 'executive' or label any dashboard as 'executive'.
+ИНСТРУКЦИИ:
+1. Перефразируйте пункты разделов «Что по-прежнему применимо» и «Что отличается» в профессиональные предложения на русском языке.
+2. Верните корректный JSON-объект РОВНО с двумя ключами: "what_still_applies" (список строк) и "what_differs" (список строк).
+3. Не добавляйте, не удаляйте и не меняйте исходные факты или результаты решений.
+4. Не используйте слова 'executive', «руководящий» и «исполнительный дашборд».
 """
         response = client.models.generate_content(
             model="gemini-3.5-flash",
@@ -66,16 +66,16 @@ INSTRUCTIONS:
                 item_lower = str(item).lower()
                 if "executive" in item_lower or "exec dashboard" in item_lower:
                     warning_msg = (
-                        "[LLM_HALLUCINATION_DETECTED] Gemini precedent comparison output referenced forbidden phrase 'executive' — falling back to template."
+                        "[LLM_HALLUCINATION_DETECTED] В сравнении прецедентов Gemini упомянута запрещённая фраза 'executive' — используется шаблон."
                     )
                     print(warning_msg, file=sys.stderr)
                     return applies_list, differs_list
             return new_applies, new_differs
         else:
-            raise ValueError("Invalid JSON structure returned by Gemini")
+            raise ValueError("Gemini вернула недопустимую структуру JSON")
     except Exception as e:
         warning_msg = (
-            f"[LLM_UNAVAILABLE] Falling back to template precedent comparison — Gemini call failed: {e}"
+            f"[LLM_UNAVAILABLE] Используется шаблонное сравнение прецедентов — вызов Gemini не выполнен: {e}"
         )
         print(warning_msg, file=sys.stderr)
         return applies_list, differs_list
@@ -85,13 +85,18 @@ def find_precedent_decisions(
     change_request: ChangeRequest, gms_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Precedent Retrieval Engine: Searches DataHub live graph for prior Decision Provenance artifacts,
-    reuses relevant evidence, and produces an explicit 'What Still Applies / What Differs' comparison.
+    Механизм поиска прецедентов: ищет в рабочем графе DataHub прежние артефакты Decision Provenance,
+    повторно использует релевантные доказательства и формирует явное сравнение «Что применимо / Что отличается».
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
-    # Search for all datasets in DataHub that contain custom properties
+    # Ищем все наборы данных DataHub с пользовательскими свойствами.
     query = """
     query searchPrecedents {
       search(input: {type: DATASET, query: "*", count: 20}) {
@@ -118,7 +123,7 @@ def find_precedent_decisions(
         res.get("search", {}).get("searchResults", []) if res else []
     )
 
-    # Fallback to direct GMS dataset query if search graph index is unindexed
+    # Если индекс поиска графа не построен, используем резервный прямой запрос GMS к набору данных.
     if not results:
         direct_query = """
         query getDatasetPrecedentDirect($urn: String!) {
@@ -161,40 +166,40 @@ def find_precedent_decisions(
             prior_rationale = props_map.get("eg_business_rationale")
             prior_url = props_map.get("eg_change_url")
 
-            # Determine comparison specifics
+            # Определяем детали сравнения.
             applies_list = []
             differs_list = []
 
-            # 1. Semantic gap check
+            # 1. Проверка семантического расхождения.
             if (
                 change_request.old_field == "order_total"
                 and change_request.new_field == "recognized_revenue"
             ):
                 applies_list.append(
-                    "Identical field rename semantic gap: gross transaction metric ('order_total') -> net metric ('recognized_revenue')."
+                    "Одинаковое семантическое расхождение при переименовании поля: метрика валовых транзакций ('order_total') -> чистая метрика ('recognized_revenue')."
                 )
                 applies_list.append(
-                    "Revenue glossary term definition & aggregate discrepancy threshold (1.00%) applies."
+                    "Применимы определение термина глоссария дохода и порог расхождения агрегатов (1,00%)."
                 )
 
-            # 2. Asset comparison
+            # 2. Сравнение активов.
             if prior_asset == change_request.source_asset:
-                applies_list.append("Same target asset URN and dataset lineage path.")
+                applies_list.append("Тот же URN целевого актива и путь происхождения набора данных.")
             else:
                 differs_list.append(
-                    f"Different target asset: candidate is '{change_request.source_asset}' vs prior '{prior_asset}'."
+                    f"Другой целевой актив: кандидат '{change_request.source_asset}', прежний '{prior_asset}'."
                 )
 
-            # 3. Change ID & PR URL comparison
+            # 3. Сравнение ID изменения и URL запроса на слияние.
             differs_list.append(
-                f"Change Request ID: '{change_request.change_id}' vs prior '{prior_id}'."
+                f"ID запроса на изменение: '{change_request.change_id}', прежний: '{prior_id}'."
             )
             if prior_url != change_request.pr_url:
                 differs_list.append(
-                    f"Pull Request URL: '{change_request.pr_url}' vs prior '{prior_url}'."
+                    f"URL запроса на слияние: '{change_request.pr_url}', прежний: '{prior_url}'."
                 )
 
-            # Use LLM narrator with fallback for precedent comparison phrasing
+            # Используем LLM для формулировок сравнения прецедентов с резервным шаблоном.
             applies_list, differs_list = narrate_precedent_comparison(
                 applies_list, differs_list, change_request.change_id, prior_id
             )
@@ -209,9 +214,9 @@ def find_precedent_decisions(
                     "what_still_applies": applies_list,
                     "what_differs": differs_list,
                     "reused_evidence": [
-                        "Revenue glossary term definition",
-                        "Gross-to-net tax & status exclusion query pattern",
-                        "1.00% validation tolerance threshold",
+                        "Определение термина глоссария дохода",
+                        "Шаблон запроса исключения налогов и статусов при переходе от валовой к чистой сумме",
+                        "Порог допустимого отклонения проверки 1,00%",
                     ],
                 }
             )

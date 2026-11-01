@@ -15,8 +15,8 @@ def build_decision_receipt(
     decision_id: str = "eg-2026-001",
 ) -> DecisionReceipt:
     """
-    Combines Milestone 2 risk assessment and Milestone 3 metric validation report
-    into a complete, deterministic DecisionReceipt artifact.
+    Объединяет оценку риска этапа 2 и отчёт проверки метрики этапа 3
+    в полный детерминированный артефакт DecisionReceipt.
     """
     now = datetime.now(timezone.utc)
     graph_snapshot_at = now.isoformat()
@@ -38,36 +38,37 @@ def build_decision_receipt(
         f"quality_assertion:{change_request.source_asset}",
     ]
 
-    # Combination Rule: A metric validation failure is a hard block that overrides the Milestone 2 preliminary risk score and sets risk_score=100 and status="blocked" regardless of initial risk score.
+    # Правило объединения: сбой проверки метрики безусловно блокирует изменение,
+    # переопределяет предварительный балл риска этапа 2 и устанавливает risk_score=100.
     if validation_report.result == "failed":
         final_status = "blocked"
         final_risk_score = 100
         recommended_action = (
-            "Apply the generated dbt compatibility patch (examples/recognized_revenue_patch.sql) "
-            "and execute migration test suite (examples/test_recognized_revenue_migration.py) "
-            "before re-submitting for approval."
+            "Примените сгенерированный патч совместимости dbt (examples/recognized_revenue_patch.sql) "
+            "и выполните набор миграционных тестов (examples/test_recognized_revenue_migration.py) "
+            "перед повторной отправкой на утверждение."
         )
     elif risk_assessment.leaning == "blocked":
         final_status = "blocked"
         final_risk_score = 100
-        recommended_action = "Resolve deterministic risk violations prior to validation."
+        recommended_action = "Устраните нарушения детерминированных правил риска до проверки."
     elif validation_report.result == "unavailable":
         final_status = "needs-review"
         final_risk_score = max(50, risk_assessment.risk_score)
         recommended_action = (
-            f"Validation source unavailable ({validation_report.reason}). "
-            f"Manual review required before approval."
+            f"Источник для проверки недоступен ({validation_report.reason}). "
+            f"Перед утверждением требуется ручная проверка."
         )
     elif risk_assessment.risk_score >= 50:
         final_status = "needs-review"
         final_risk_score = risk_assessment.risk_score
         recommended_action = (
-            f"Obtain approval from listed approvers: {', '.join(risk_assessment.required_approvers)}"
+            f"Получите утверждение от указанных согласующих: {', '.join(risk_assessment.required_approvers)}"
         )
     else:
         final_status = "approved"
         final_risk_score = risk_assessment.risk_score
-        recommended_action = "Proceed with schema migration and update downstream models."
+        recommended_action = "Выполните миграцию схемы и обновите зависимые модели."
 
     business_rationale = generate_business_rationale(
         change_request=change_request,

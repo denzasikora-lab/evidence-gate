@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from src.api.schemas import ChangeRequest, DecisionReceipt
 from src.evidence.collector import build_evidence_bundle
 from src.decision.risk_engine import evaluate_risk
@@ -7,10 +8,16 @@ from src.decision.evaluator import build_decision_receipt
 from src.writeback.writer import write_decision_provenance
 
 app = FastAPI(
-    title="Evidence Gate API",
-    description="Operational Decision Provenance Engine for DataHub",
+    title="API Evidence Gate",
+    description="Сервис фиксации обоснований операционных решений для DataHub",
     version="1.0.0",
 )
+
+
+@app.get("/", include_in_schema=False)
+def index() -> RedirectResponse:
+    """Открывает интерактивную документацию вместо технического ответа 404."""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

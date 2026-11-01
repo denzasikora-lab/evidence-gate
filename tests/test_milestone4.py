@@ -49,7 +49,7 @@ def test_independent_retrieval_from_datahub():
     assert report["decision_id"] == "eg-2026-001"
     assert report["status"] == "blocked"
     assert report["risk_score"] == 100
-    assert "Validation failed: Revenue aggregate shifted by 13.16%" in report["validation_reason"]
+    assert "Проверка не пройдена: агрегат дохода изменился на 13.16%" in report["validation_reason"]
     assert "David Kim" in report["required_approvers"]
 
 

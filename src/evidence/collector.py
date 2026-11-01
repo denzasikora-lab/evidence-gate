@@ -177,23 +177,28 @@ def build_evidence_bundle(
     change_request: ChangeRequest, gms_url: Optional[str] = None
 ) -> EvidenceBundle:
     """
-    Queries DataHub live GMS endpoint via Agent Context Kit pattern to assemble a bounded,
-    task-specific EvidenceBundle for the given ChangeRequest asset and field.
+    Запрашивает рабочую конечную точку GMS DataHub по шаблону Agent Context Kit и формирует
+    ограниченный, зависящий от задачи EvidenceBundle для актива и поля из ChangeRequest.
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     res = graph.execute_graphql(GET_DATASET_EVIDENCE_QUERY, variables={"urn": change_request.source_asset})
     dataset_data = res.get("dataset") if res else None
 
     if not dataset_data:
-        # Fallback if asset is missing or not found in DataHub
+        # Резервный вариант, если актив отсутствует или не найден в DataHub.
         return EvidenceBundle(
             asset_urn=change_request.source_asset,
             field_name=change_request.old_field,
         )
 
-    # 1. Parse field-level glossary terms for the affected field
+    # 1. Разбираем термины глоссария на уровне затронутого поля.
     field_glossary_terms: List[GlossaryTermRef] = []
     schema_meta = dataset_data.get("schemaMetadata") or {}
     for f in schema_meta.get("fields", []):
@@ -212,7 +217,7 @@ def build_evidence_bundle(
                         )
                     )
 
-    # 2. Parse dataset-level glossary terms
+    # 2. Разбираем термины глоссария на уровне набора данных.
     dataset_glossary_terms: List[GlossaryTermRef] = []
     ds_gt_container = dataset_data.get("glossaryTerms") or {}
     for t_item in ds_gt_container.get("terms", []):
@@ -228,7 +233,7 @@ def build_evidence_bundle(
                 )
             )
 
-    # 3. Parse asset owners
+    # 3. Разбираем владельцев актива.
     asset_owners: List[OwnerRef] = []
     ownership = dataset_data.get("ownership") or {}
     for o_entry in ownership.get("owners", []):
@@ -236,7 +241,7 @@ def build_evidence_bundle(
         if ref:
             asset_owners.append(ref)
 
-    # 4. Parse downstream lineage for BI consumers and their owners
+    # 4. Разбираем зависимое происхождение для BI-потребителей и их владельцев.
     downstream_consumers: List[DownstreamConsumer] = []
     unresolvable_lineage_urns: List[str] = []
     seen_urns = set()
@@ -256,7 +261,7 @@ def build_evidence_bundle(
         platform_name = (platform_info.get("name") or "").lower()
         ent_name = entity.get("name") or ent_urn
 
-        # Check if platform is a known BI platform or platform name is in URN
+        # Проверяем, является ли платформа известной BI-платформой или её имя входит в URN.
         is_bi = platform_name in BI_PLATFORMS or any(p in ent_urn.lower() for p in BI_PLATFORMS)
         if is_bi:
             has_bi = True
@@ -279,7 +284,8 @@ def build_evidence_bundle(
                 )
             )
 
-    # If downstream consumers is incomplete due to DataHub search index timing, query live GMS for known consumers
+    # Если список зависимых потребителей неполон из-за задержки поискового индекса DataHub,
+    # запрашиваем рабочую GMS для известных потребителей.
     if "order_details" in change_request.source_asset:
         for ds_urn in KNOWN_DOWNSTREAM_CONSUMER_URNS:
             if ds_urn not in seen_urns:
@@ -307,17 +313,17 @@ def build_evidence_bundle(
                 except Exception:
                     pass
 
-    # Recalculate has_bi to ensure accuracy across all fetched consumers
+    # Пересчитываем has_bi, чтобы учесть всех полученных потребителей.
     has_bi = has_bi or any(
         c.platform in BI_PLATFORMS or any(p in c.urn.lower() for p in BI_PLATFORMS)
         for c in downstream_consumers
     )
 
-    # 5. Parse quality assertions
+    # 5. Разбираем проверки качества.
     failing_assertions: List[AssertionRef] = []
     assertions_meta = dataset_data.get("assertions") or {}
     for ass_item in assertions_meta.get("assertions", []):
-        # Check if assertion has failing status
+        # Проверяем, имеет ли проверка неуспешный статус.
         status = ass_item.get("status", "UNKNOWN")
         if status == "FAILED":
             failing_assertions.append(

@@ -24,9 +24,14 @@ ORIGINAL_GLOSSARY_URNS = [
 
 
 def restore_glossary_terms(asset_urn: str, gms_url: Optional[str] = None) -> None:
-    """Restores the original showcase-ecommerce dataset glossary terms on DataHub."""
+    """Восстанавливает в DataHub исходные термины глоссария набора showcase-ecommerce."""
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     mcp = MetadataChangeProposalWrapper(
         entityUrn=asset_urn,
@@ -47,14 +52,19 @@ def simulate_graph_change(
     gms_url: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Simulates a real, meaningful graph change directly on the live DataHub instance.
-    Action 'remove_glossary_term': Removes 'Revenue by Customer Class' from asset glossary terms.
+    Имитирует реальное значимое изменение графа непосредственно в работающем DataHub.
+    Действие 'remove_glossary_term' удаляет «Доход по классу клиента» из терминов глоссария актива.
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     if action == "remove_glossary_term":
-        # Fetch current terms
+        # Получаем текущие термины.
         query = """
         query getTerms($urn: String!) {
           dataset(urn: $urn) {
@@ -73,14 +83,14 @@ def simulate_graph_change(
             res.get("dataset", {}).get("glossaryTerms", {}).get("terms", [])
         )
 
-        # Filter out the Revenue glossary term URN
+        # Исключаем URN термина глоссария дохода.
         remaining_urns = [
             t["term"]["urn"]
             for t in current_terms
             if t.get("term", {}).get("urn") != REVENUE_GLOSSARY_URN
         ]
 
-        # Emit updated GlossaryTerms aspect to DataHub
+        # Отправляем в DataHub обновлённый аспект GlossaryTerms.
         mcp = MetadataChangeProposalWrapper(
             entityUrn=asset_urn,
             aspect=GlossaryTermsClass(
@@ -103,19 +113,24 @@ def simulate_graph_change(
             "remaining_terms_count": len(remaining_urns),
         }
     else:
-        raise ValueError(f"Unsupported graph change action: {action}")
+        raise ValueError(f"Неподдерживаемое действие изменения графа: {action}")
 
 
 def check_and_invalidate_provenance(
     asset_urn: str, gms_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Graph-change watcher: Inspects live DataHub metadata for asset_urn.
-    If the evidence graph dependencies behind a stored Decision Provenance have changed,
-    flips provenance status to 'stale' and writes the updated status directly back to DataHub.
+    Наблюдатель изменений графа: проверяет рабочие метаданные DataHub для asset_urn.
+    Если зависимости графа доказательств, лежащие в основе сохранённого Decision Provenance, изменились,
+    меняет статус обоснования на 'stale' и сразу записывает обновление в DataHub.
     """
     target_gms_url = gms_url or os.getenv("DATAHUB_GMS_URL", "http://localhost:8080")
-    graph = DataHubGraph(DataHubGraphConfig(server=target_gms_url))
+    graph = DataHubGraph(
+        DataHubGraphConfig(
+            server=target_gms_url,
+            token=os.getenv("DATAHUB_GMS_TOKEN") or None,
+        )
+    )
 
     query = """
     query checkGraphState($urn: String!) {
@@ -141,7 +156,7 @@ def check_and_invalidate_provenance(
     res = graph.execute_graphql(query, variables={"urn": asset_urn})
     dataset_data = res.get("dataset") if res else None
     if not dataset_data or not dataset_data.get("properties"):
-        return {"error": f"Asset {asset_urn} not found on DataHub"}
+        return {"error": f"Актив {asset_urn} не найден в DataHub"}
 
     props_list = dataset_data["properties"].get("customProperties") or []
     props_map = {item["key"]: item["value"] for item in props_list}
@@ -149,7 +164,7 @@ def check_and_invalidate_provenance(
     current_status = props_map.get("eg_provenance_status", "unknown")
     decision_id = props_map.get("eg_decision_id", "unknown")
 
-    # Inspect current live glossary terms from DataHub graph
+    # Проверяем текущие рабочие термины глоссария из графа DataHub.
     live_terms = [
         t["term"]["urn"]
         for t in dataset_data.get("glossaryTerms", {}).get("terms", [])
@@ -159,16 +174,16 @@ def check_and_invalidate_provenance(
     is_stale = False
     stale_reason = ""
 
-    # Check dependency: Revenue glossary term link
+    # Проверяем зависимость: связь с термином глоссария дохода.
     if REVENUE_GLOSSARY_URN not in live_terms:
         is_stale = True
         stale_reason = (
-            f"Evidence graph dependency modified: Glossary term 'Revenue by Customer Class' "
-            f"({REVENUE_GLOSSARY_URN}) was removed from asset."
+            f"Изменена зависимость графа доказательств: термин глоссария «Доход по классу клиента» "
+            f"({REVENUE_GLOSSARY_URN}) удалён из актива."
         )
 
     if is_stale and current_status != "stale":
-        # Update custom properties in DataHub GMS
+        # Обновляем пользовательские свойства в GMS DataHub.
         props_map["eg_provenance_status"] = "stale"
         props_map["eg_stale_reason"] = stale_reason
 

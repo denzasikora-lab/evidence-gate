@@ -1,20 +1,25 @@
-# Evidence Gate — Troubleshooting Guide
+# Evidence Gate — устранение неполадок
 
-## Common Issues & Solutions
+## Частые проблемы и решения
 
-### 1. Docker Daemon Not Running
-If `docker --version` or `docker ps` fails inside Codespaces:
-- Ensure the devcontainer was rebuilt with the `ghcr.io/devcontainers/features/docker-in-docker:2` feature enabled.
-- Rebuild the devcontainer: Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) -> `Codespaces: Rebuild Container`.
+### 1. Не запущен Docker daemon
 
-### 2. DataHub Quickstart Fails or Times Out
-- Verify memory allocation: Codespaces free tier provides 8GB RAM, which is sufficient for `datahub docker quickstart`.
-- Run `docker ps` to verify containers `datahub-gms`, `datahub-frontend-react`, `opensearch`, `mysql` are healthy.
+Если `docker --version` или `docker ps` завершается ошибкой в Codespaces:
 
-### 3. Port Forwarding / UI Unreachable
-- Check the VS Code / Codespaces **Ports** tab.
-- Confirm port 9002 is listed as Forwarded and Visibility is set to Public/Private.
+- Убедитесь, что devcontainer собран с функцией `ghcr.io/devcontainers/features/docker-in-docker:2`.
+- Пересоберите devcontainer: откройте палитру команд (`Ctrl+Shift+P` / `Cmd+Shift+P`) и выберите `Codespaces: Rebuild Container`.
 
-### 4. `datahub datapack load showcase-ecommerce` Failure
-- Confirm `DATAHUB_GMS_URL` points to `http://localhost:8080`.
-- Verify GMS health endpoint: `curl http://localhost:8080/health`.
+### 2. DataHub Quickstart завершается ошибкой или истекает время ожидания
+
+- Проверьте выделенную память: бесплатный тариф Codespaces предоставляет 8 ГБ RAM, чего достаточно для `datahub docker quickstart`.
+- Выполните `docker ps` и убедитесь, что контейнеры `datahub-gms`, `datahub-frontend-react`, `opensearch` и `mysql` работоспособны.
+
+### 3. Порт не перенаправлен или интерфейс недоступен
+
+- Проверьте вкладку **Ports** в VS Code / Codespaces.
+- Убедитесь, что порт 9002 есть в списке, перенаправлен и имеет подходящую видимость Public/Private.
+
+### 4. Не загружается `datahub datapack load showcase-ecommerce`
+
+- Проверьте, что `DATAHUB_GMS_URL` указывает на `http://localhost:8080`.
+- Проверьте состояние GMS: `curl http://localhost:8080/health`.
